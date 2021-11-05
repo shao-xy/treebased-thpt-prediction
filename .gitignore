@@ -1,0 +1,9 @@
+*
+
+!*.py
+!*.lua
+!trace
+!trace/*
+!output
+!output/.gitkeep
+!.gitignore
