@@ -26,17 +26,19 @@ end
 
 -- Get the mean value of a table
 function stats.mean( t )
+  -- print("stats.mean")
   local sum = 0
   local count= 0
-
+  
   for k,v in pairs(t) do
+	-- print("k="..k..",v="..v)
     if type(v) == 'number' then
       sum = sum + v
       count = count + 1
     end
   end
 
-  return (sum / count)
+  return count ~= 0 and (sum / count) or nil
 end
 
 -- Get the mode of a table.  Returns a table of values.
@@ -117,6 +119,11 @@ function stats.standardDeviation( t )
   result = math.sqrt(sum / (count-1))
 
   return result
+end
+
+function stats.coefficientOfVariation( t )
+  local avg = stats.mean(t)
+  return avg ~= 0 and stats.standardDeviation(t) / avg or nil
 end
 
 -- Get the max and min for a table

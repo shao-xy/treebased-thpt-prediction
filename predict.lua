@@ -7,8 +7,8 @@ local function calc_decayedload(load_array)
 	local decayfactor = 2
 	local sum = 0
 	for i = #load_array, 1, -1 do
-		sum = sum + load_array[i] / decayfactor
-		decayfactor = decayfactor * 2
+		sum = (sum + load_array[i]) / decayfactor
+		if sum < 1 then sum = 0 end
 	end
 	return sum
 end
@@ -36,22 +36,22 @@ local function predictfunc_above_average(load_matrix)
 	prediction = {}
 	spatial_load = 0
 	for entry, entry_load_list in ipairs(load_matrix) do
-		-- local sum = 0
-		-- prediction[entry] = sum / #entry_load_list
-		average = stats.mean(entry_load_list)
+		average = #entry_load_list > 0 and stats.mean(entry_load_list) or 0
 		sd = stats.standardDeviation(entry_load_list)
-		print(string.format("%2d: average is %.2f, standard deviation is %.2f.", entry, average, sd))
+		-- print(string.format("%2d: average is %.2f, standard deviation is %.2f.", entry, average, sd))
+		local my_spatial_load_total = 0
 		for epoch, load_value in ipairs(entry_load_list) do
 			delta = load_value - average
 			-- delta must be positive
 			if delta > 0 then
-				spatial_load = spatial_load + math.abs(delta)
-				print(string.format("%2d %2d: delta %d > 0", entry, epoch, delta))
+				my_spatial_load_total = my_spatial_load_total + math.abs(delta)
+				-- print(string.format("%2d %2d: delta %d > 0", entry, epoch, delta))
 			end
 		end
+		spatial_load = spatial_load + my_spatial_load_total / #entry_load_list
 		prediction[entry] = average
 	end
-	print("Spatial load is " .. spatial_load)
+	-- print("Spatial load is " .. spatial_load)
 	for i = 1,#prediction do
 		prediction[i] = prediction[i] + spatial_load / #prediction
 	end
@@ -85,6 +85,11 @@ local function predictfunc_kmeans2(load_matrix)
 			-- initialize average first
 			for i = 1, 2 do
 				cluster[i].avg = stats.mean(cluster[i].vals)
+				if cluster[i].avg == nil then
+					return stats.mean(vallist), 0
+					-- print("Cluster length = "..#cluster[i].vals)
+					-- print("The other cluster length = " .. #cluster[3-i].vals)
+				end
 			end
 			local cluster_stop = true
 			local new_cluster = {{["vals"]={}}, {["vals"]={}}}
@@ -147,11 +152,11 @@ local function predictfunc_kmeans2(load_matrix)
 
 	for entry, entry_load_list in ipairs(load_matrix) do
 		temporal, spatial = kmeans2(entry_load_list)
-		print(string.format("temporal = %.2f, spatial = %.2f", temporal, spatial))
+		-- print(string.format("temporal = %.2f, spatial = %.2f", temporal, spatial))
 		prediction[entry] = temporal
 		spatial_load = spatial_load + spatial
 	end
-	print("Spatial load is " .. spatial_load)
+	-- print("Spatial load is " .. spatial_load)
 	for i = 1,#prediction do
 		prediction[i] = prediction[i] + spatial_load / #prediction
 	end
@@ -170,5 +175,7 @@ end
 --   Returns:
 --     an array: an length-M array (i.e. M*1 matrix) representing
 --               a prediction of load in the next epoch
+-- predictfunc = predictfunc_above_average
 predictfunc = predictfunc_kmeans2
+--predictfunc = predictfunc_decay
 --predictfunc = nil
